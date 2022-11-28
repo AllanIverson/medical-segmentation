@@ -127,3 +127,31 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#model
+*.pth
+medical-segmentation/mae-main/1000epoch_075_768_1e_4_dir
+medical-segmentation/mae-main/1000epoch_075_768_1e_5_dir
+medical-segmentation/mae-main/base_line
+medical-segmentation/mae-main/case_nolabel_nofreeze
+medical-segmentation/mae-main/case_nwithabel_nofreeze
+medical-segmentation/mae-main/case_withlabel_nofreeze
+medical-segmentation/mae-main/case0_finetune
+medical-segmentation/mae-main/case1_finetune
+medical-segmentation/mae-main/case2_finetune
+medical-segmentation/mae-main/data/zhanghao/MODEL_0.5/compVnet_baseline
+medical-segmentation/mae-main/demo
+medical-segmentation/mae-main/mae-main
+medical-segmentation/mae-main/my_seg_vit_meanloss_output_dir
+medical-segmentation/mae-main/my_supervised_seg_ViT_earlystop_dice_lossforpatch
+medical-segmentation/mae-main/my_ViT_finetune_seg_768_256_win4_b6_3d
+medical-segmentation/mae-main/my_ViT_finetune_seg_768_512_win4_b6_3d
+medical-segmentation/mae-main/my_ViT_finetune_seg_base_3d
+medical-segmentation/mae-main/my_ViT_finetune_seg_nolossforpatch
+medical-segmentation/mae-main/my_ViT_finetune_seg_nolossforpatch_lr2
+medical-segmentation/mae-main/my_ViT_finetune_seg_real768_256_win4_b6_3d
+medical-segmentation/mae-main/oasis_cc359_half_pretrain_out_norm
+medical-segmentation/mae-main/pretrain_model
+medical-segmentation/mae-main/register_out/output_log
+medical-segmentation/mae-main/test_finetune/test_nofreezeembed_pre800_add75_testoncc
+medical-segmentation/mae-main/ad_oa_withlabel_nofreeze_seg4/pre500_seg414oa_testoncc_nofreeze
