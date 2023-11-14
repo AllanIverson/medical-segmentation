@@ -65,7 +65,7 @@ class MAE3D(nn.Module):
         self.norm_pix_loss = norm_pix_loss
 
         self.initialize_weights()
-        print("初始化权重")
+        print("init weights")
 
     def initialize_weights(self):
         # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
