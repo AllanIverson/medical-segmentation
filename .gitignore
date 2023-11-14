@@ -127,9 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
+**/runs/
 #model
 *.pth
+*.pt
+*.ipynb
+*.csv
+*.txt
+/data2/zhanghao/Pretrain/runs/
 medical-segmentation/mae-main/1000epoch_075_768_1e_4_dir/
 medical-segmentation/mae-main/1000epoch_075_768_1e_5_dir/
 medical-segmentation/mae-main/base_line/

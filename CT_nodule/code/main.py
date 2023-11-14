@@ -121,7 +121,7 @@ def get_args_parser():
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES']='0,2'
 
-    #whether use 半精度计算  default == false
+    #whether use amp  default == false
     args.amp = not args.noamp
 
     if args.distributed:
@@ -134,7 +134,7 @@ def main(args):
 
 
 def main_worker(gpu,args):
-    print('开始分布式训练')
+    print('Start distributed training')
     if args.distributed:
         torch.multiprocessing.set_start_method("fork", force=True)
     np.set_printoptions(formatter={"float": "{: 0.3f}".format}, suppress=True)
@@ -148,16 +148,7 @@ def main_worker(gpu,args):
     torch.backends.cudnn.benchmark = True
     args.test_mode = False
     train_loader = get_loader(args)[0]
-    ################
-    # #输出20张图片看一下
-    # save_path = '/data/zhanghao/runs/some_npy/'
-    # for i,data in enumerate(train_loader):
-    #     image = data['image'].squeeze().numpy()
-    #     name = data["image_meta_dict"]["filename_or_obj"][0].split("/")[-1]
-    #     np.save(save_path+name+'.npy',image)
-    #     if i == 20:
-    #         break
-    ################
+
     print(args.rank, " gpu", args.gpu)
     if args.rank == 0:
         print("Batch size is:", args.batch_size, "epochs", args.epochs)
