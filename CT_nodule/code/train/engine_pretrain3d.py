@@ -28,7 +28,7 @@ def train_one_epoch(model: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
     
-    print('train loader 的 长度 是',len(data_loader))
+    print('len of train loader:',len(data_loader))
 
 
     # for data_iter_step, (samples, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
@@ -39,7 +39,7 @@ def train_one_epoch(model: torch.nn.Module,
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
 
-        samples = data["image"]  #自己的数据是data["image"]表示图片
+        samples = data["image"]  
         samples = samples.cuda(args.rank)
         for param in model.parameters():
             param.grad = None
@@ -81,7 +81,7 @@ def train_one_epoch(model: torch.nn.Module,
             log_writer.add_scalar('lr', lr, epoch_1000x)
 
     end_time = time.time()
-    print('train 第'+str(epoch)+' need '+ str(end_time-start_time)+'s') 
+    print('train the '+str(epoch)+'th need '+ str(end_time-start_time)+' s') 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
@@ -103,7 +103,7 @@ def train_N_epoch(model: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
     
-    print('train loader 的 长度 是',len(data_loader))
+    print('len of train loader ',len(data_loader))
 
     #use grad accum_iter,for example accum_iter = 8
     for small_epoch in range(accum_iter):
@@ -113,7 +113,7 @@ def train_N_epoch(model: torch.nn.Module,
         for data_iter_step,data in enumerate(data_loader):
 
             if random.randint(0,1) == 0 :
-                samples = data["image"]  #自己的数据是data["image"]表示图片
+                samples = data["image"] 
             else:
                 samples = data['label']
             samples = samples.cuda(args.rank)
@@ -176,14 +176,14 @@ def valid_one_epoch(model: torch.nn.Module,
         if log_writer is not None:
             print('log_dir: {}'.format(log_writer.log_dir))
         
-        print('valid loader 的 长度 是',len(data_loader))
+        print('len of valid loader',len(data_loader))
 
         for data_iter_step,data in enumerate(data_loader):
             # we use a per iteration (instead of per epoch) lr scheduler
 
             random.seed(0)
             if random.randint(0,1) == 0 :
-                samples = data["image"]  #自己的数据是data["image"]表示图片
+                samples = data["image"]  
             else:
                 samples = data['label']
             samples = samples.cuda(args.rank)
@@ -217,7 +217,7 @@ def valid_one_epoch(model: torch.nn.Module,
                 log_writer.add_scalar('valid_loss', loss_value_reduce, epoch_1000x)
 
         end_time = time.time()
-        print('valid 第'+str(epoch)+' need '+ str(end_time-start_time)+'s') 
+        print('valid the '+str(epoch)+'th need '+ str(end_time-start_time)+'s') 
         # gather the stats from all processes
         metric_logger.synchronize_between_processes()
         print("Averaged stats:", metric_logger)
