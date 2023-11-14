@@ -23,13 +23,12 @@ from utils.utils import AverageMeter, distributed_all_gather
 
 from monai.data import decollate_batch
 
+# Gradually open fine tuning
 def open_freeze_by_epoch(model,max_epoch,epoch,warm_epoch,args):
-    # 计算哪层需要被open
-    encoder_layers_num = args.count_layer # 这是encoder的总层数
-    
-    # 如果当前epoch小于warmup_epoch 则对encoder全部冻结
+    encoder_layers_num = args.count_layer
+
     if epoch < warm_epoch:
-        print("冻结encoder全部参数,需要冻结的层数：",encoder_layers_num)
+        print("need freeze layers：",encoder_layers_num)
         idx = 0
         for name, param in model.named_parameters():
             if idx < encoder_layers_num:
@@ -40,7 +39,6 @@ def open_freeze_by_epoch(model,max_epoch,epoch,warm_epoch,args):
         return model
     else:
         open_layers =  encoder_layers_num *(1 - ( (epoch - warm_epoch) / (max_epoch - warm_epoch) ))
-        print("当前epoch需要冻结的层数:",open_layers)
         idx = 0
         for name, param in model.named_parameters():
             if idx < open_layers:
@@ -48,7 +46,7 @@ def open_freeze_by_epoch(model,max_epoch,epoch,warm_epoch,args):
             else :
                 param.requires_grad = True
             idx += 1
-        if args.model_name == 'unetr':  # 对unetr进行特殊处理,永远不解冻patch_embed参数
+        if args.model_name == 'unetr':  #special process for unetr's patch embedding
             for name, param in model.named_parameters():
                 if name == 'patch_embed.proj.weight':
                     param.requires_grad = False
@@ -62,7 +60,6 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
     if args.use_layer_finetune:
         model = open_freeze_by_epoch(model,args.max_epochs,epoch,args.warmup_epochs,args)
         if args.rank == 0:
-            print("使用逐步放开微调策略下,本次epoch的参数量")
             pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print("Total parameters count", pytorch_total_params)
             
@@ -74,12 +71,13 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
             data, target = batch_data
         else:
             data, target = batch_data["image"], batch_data["label"]
+        # because adni has 33 labels , oasis has 35 labels . In order to be consistent , we transform 35 labels -> 33 labels
         if args.out_channels == 36:
             target[target == 19] = 0
             target[target == 35] = 0
             # flat_tensor = target.view(-1).numpy()
             # missing_numbers = [num for num in range(37) if num not in flat_tensor]
-            # print('没有出现的数字是:',missing_numbers)
+            # print('missing numbers are:',missing_numbers)
         data, target = data.cuda(args.rank), target.cuda(args.rank)
         print(data.shape,target.shape)
         for param in model.parameters():
@@ -131,20 +129,20 @@ def val_epoch(model, loader, epoch, acc_func, args, model_inferer=None, post_lab
             data, target = data.cuda(args.rank), target.cuda(args.rank)
             with autocast(enabled=args.amp):
                 if model_inferer is not None:
-                    print('使用sliding window 测试,args.amp = ',args.amp)
+                    print('use sliding window ,args.amp = ',args.amp)
                     logits = model_inferer(data)
                 else:
                     logits = model(data)
             if not logits.is_cuda:
                 target = target.cpu()
-            print('形状是',target.shape,logits.shape)
+            print('the shape ',target.shape,logits.shape)
             val_labels_list = decollate_batch(target)
             val_labels_convert = [post_label(val_label_tensor) for val_label_tensor in val_labels_list]
             val_outputs_list = decollate_batch(logits)
             val_output_convert = [post_pred(val_pred_tensor) for val_pred_tensor in val_outputs_list]
             acc_func.reset()
             # ################################
-            # 隐藏两个通道，不计算dice
+            # when compare synthseg,we only calculate dice on 32 labels.
             if args.out_channels == 36 and args.test_mode == True:
                 val_output_convert[0] = torch.cat((val_output_convert[0][:18], val_output_convert[0][20:34]), dim=0)
                 val_labels_convert[0] = torch.cat((val_labels_convert[0][:18], val_labels_convert[0][20:34]), dim=0)
@@ -154,7 +152,7 @@ def val_epoch(model, loader, epoch, acc_func, args, model_inferer=None, post_lab
             acc_func(y_pred=val_output_convert, y=val_labels_convert)
             acc, not_nans = acc_func.aggregate()
             acc = acc.cuda(args.rank)
-            print('acc是什么',acc[0].item())
+            print('acc:',acc[0].item())
 
             if args.distributed:
                 acc_list, not_nans_list = distributed_all_gather(
@@ -178,7 +176,7 @@ def val_epoch(model, loader, epoch, acc_func, args, model_inferer=None, post_lab
                 count += 1
             start_time = time.time()
             if args.test_mode == True:
-                print("平均dice:", acc_all /count)
+                print("average dice:", acc_all /count)
     return run_acc.avg
 
 
