@@ -38,15 +38,19 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 parser = argparse.ArgumentParser(description="UNETR segmentation pipeline")
+# checkpoint path
 parser.add_argument("--checkpoint", default=None, help="start training from saved checkpoint")
-parser.add_argument("--logdir", default="/data2/zhanghao/runs/segment_model/oasis_4_wo/scratch_UNETR_30_1e-4/", type=str, help="directory to save the tensorboard logs")
-parser.add_argument("--log_dir", default="/data2/zhanghao/runs/segment_model/oasis_4_wo/scratch_UNETR_30_1e-4/", type=str, help="directory to save the tensorboard logs")
-parser.add_argument('--output_dir', default="/data2/zhanghao/runs/segment_model/oasis_4_wo/scratch_UNETR_30_1e-4/",
+# log path
+parser.add_argument("--logdir", default="", type=str, help="directory to save the tensorboard logs")
+parser.add_argument("--log_dir", default="", type=str, help="directory to save the tensorboard logs")
+parser.add_argument('--output_dir', default="",
                         help='path where to save, empty for no saving')
-parser.add_argument('--add',default=0,type=int,help='number of add target')
-parser.add_argument('--num_source',default=0,type=int,help='number of source')
+# use how many data in source domain and target domain
+parser.add_argument('--add',default=0,type=int,help='number of add target domain')
+parser.add_argument('--num_source',default=0,type=int,help='number of source domain')
 parser.add_argument('--use_all_source',default=True)
 parser.add_argument('--source',default='oasis')
+# these may not be needed,you can load your pretrained model by your may.
 parser.add_argument(
     "--pretrained_dir", default="./pretrained_models/", type=str, help="pretrained checkpoint directory"
 )
@@ -55,6 +59,34 @@ parser.add_argument("--json_list", default="dataset_0.json", type=str, help="dat
 parser.add_argument(
     "--pretrained_model_name", default="UNETR_model_best_acc.pth", type=str, help="pretrained model name"
 )
+# model set
+parser.add_argument("--model_name", default="unetr", type=str, help="model name")
+parser.add_argument("--pos_embed", default="perceptron", type=str, help="type of position embedding")
+parser.add_argument("--norm_name", default="instance", type=str, help="normalization layer type in decoder")
+parser.add_argument("--num_heads", default=12, type=int, help="number of attention heads in ViT encoder")
+parser.add_argument("--mlp_dim", default=3072, type=int, help="mlp dimention in ViT encoder")
+parser.add_argument("--hidden_size", default=768, type=int, help="hidden size dimention in ViT encoder")
+parser.add_argument("--feature_size", default=48, type=int, help="feature size dimention")
+parser.add_argument("--in_channels", default=1, type=int, help="number of input channels")
+parser.add_argument("--out_channels", default=5, type=int, help="number of output channels(background is 0)")
+parser.add_argument("--res_block", action="store_true", help="use residual blocks")
+parser.add_argument("--conv_block", action="store_true", help="use conv blocks")
+parser.add_argument("--use_normal_dataset", action="store_true", help="use monai Dataset class")
+# data process
+parser.add_argument("--b_min", default=0.0, type=float, help="b_min in ScaleIntensityRanged")
+parser.add_argument("--b_max", default=1.0, type=float, help="b_max in ScaleIntensityRanged")
+parser.add_argument("--space_x", default=1.0, type=float, help="spacing in x direction")
+parser.add_argument("--space_y", default=1.0, type=float, help="spacing in y direction")
+parser.add_argument("--space_z", default=1.0, type=float, help="spacing in z direction")
+parser.add_argument("--roi_x", default=192, type=int, help="roi size in x direction")
+parser.add_argument("--roi_y", default=192, type=int, help="roi size in y direction")
+parser.add_argument("--roi_z", default=192, type=int, help="roi size in z direction")
+parser.add_argument("--dropout_rate", default=0.0, type=float, help="dropout rate")
+parser.add_argument("--RandFlipd_prob", default=0.2, type=float, help="RandFlipd aug probability")
+parser.add_argument("--RandRotate90d_prob", default=0.2, type=float, help="RandRotate90d aug probability")
+parser.add_argument("--RandScaleIntensityd_prob", default=0.1, type=float, help="RandScaleIntensityd aug probability")
+parser.add_argument("--RandShiftIntensityd_prob", default=0.1, type=float, help="RandShiftIntensityd aug probability")
+# the training set
 parser.add_argument("--save_checkpoint", default=True, help="save checkpoint during training")
 parser.add_argument("--max_epochs", default=100, type=int, help="max number of training epochs")
 parser.add_argument("--batch_size", default=1, type=int, help="number of batch size")
@@ -71,31 +103,6 @@ parser.add_argument("--rank", default=0, type=int, help="node rank for distribut
 parser.add_argument("--dist-url", default="tcp://127.0.0.1:23457", type=str, help="distributed url")
 parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
 parser.add_argument("--workers", default=2, type=int, help="number of workers")
-parser.add_argument("--model_name", default="unetr", type=str, help="model name")
-parser.add_argument("--pos_embed", default="perceptron", type=str, help="type of position embedding")
-parser.add_argument("--norm_name", default="instance", type=str, help="normalization layer type in decoder")
-parser.add_argument("--num_heads", default=12, type=int, help="number of attention heads in ViT encoder")
-parser.add_argument("--mlp_dim", default=3072, type=int, help="mlp dimention in ViT encoder")
-parser.add_argument("--hidden_size", default=768, type=int, help="hidden size dimention in ViT encoder")
-parser.add_argument("--feature_size", default=48, type=int, help="feature size dimention")
-parser.add_argument("--in_channels", default=1, type=int, help="number of input channels")
-parser.add_argument("--out_channels", default=36, type=int, help="number of output channels")
-parser.add_argument("--res_block", action="store_true", help="use residual blocks")
-parser.add_argument("--conv_block", action="store_true", help="use conv blocks")
-parser.add_argument("--use_normal_dataset", action="store_true", help="use monai Dataset class")
-parser.add_argument("--b_min", default=0.0, type=float, help="b_min in ScaleIntensityRanged")
-parser.add_argument("--b_max", default=1.0, type=float, help="b_max in ScaleIntensityRanged")
-parser.add_argument("--space_x", default=1.0, type=float, help="spacing in x direction")
-parser.add_argument("--space_y", default=1.0, type=float, help="spacing in y direction")
-parser.add_argument("--space_z", default=1.0, type=float, help="spacing in z direction")
-parser.add_argument("--roi_x", default=192, type=int, help="roi size in x direction")
-parser.add_argument("--roi_y", default=192, type=int, help="roi size in y direction")
-parser.add_argument("--roi_z", default=192, type=int, help="roi size in z direction")
-parser.add_argument("--dropout_rate", default=0.0, type=float, help="dropout rate")
-parser.add_argument("--RandFlipd_prob", default=0.2, type=float, help="RandFlipd aug probability")
-parser.add_argument("--RandRotate90d_prob", default=0.2, type=float, help="RandRotate90d aug probability")
-parser.add_argument("--RandScaleIntensityd_prob", default=0.1, type=float, help="RandScaleIntensityd aug probability")
-parser.add_argument("--RandShiftIntensityd_prob", default=0.1, type=float, help="RandShiftIntensityd aug probability")
 parser.add_argument("--infer_overlap", default=0.5, type=float, help="sliding window inference overlap")
 parser.add_argument("--lrschedule", default="warmup_cosine", type=str, help="type of learning rate scheduler")
 parser.add_argument("--warmup_epochs", default=50, type=int, help="number of warmup epochs")
@@ -104,28 +111,29 @@ parser.add_argument("--resume_jit", action="store_true", help="resume training f
 parser.add_argument("--smooth_dr", default=1e-6, type=float, help="constant added to dice denominator to avoid nan")
 parser.add_argument("--smooth_nr", default=0.0, type=float, help="constant added to dice numerator to avoid zero")
 parser.add_argument("--infer-size",default=160)
-#model
-parser.add_argument('--start_epoch',type=int,default=0)
-parser.add_argument('--use_pretrain',default=True)
+parser.add_argument('--start_epoch',type=int,default=0,help="when use checkpoint,need modify start epoch")
+parser.add_argument('--use_pretrain',default=True,help="whether use pretrain model")
 parser.add_argument('--use_base',action="store_true")
 parser.add_argument("--use_layer_finetune",default=False)
 parser.add_argument('--encoder_model', default='mae3d_160_base', type=str, metavar='MODEL',
                         help='Name of model to train')
 parser.add_argument('--finetune',default='/data2/zhanghao/runs/pretrain_model/mask85_wopix_goon/checkpoint-150.pth')
 
-# parser.add_argument('--finetune', default='/data2/zhanghao/4_35_seg_project/pretrain_model/swin_oasis_adni_pretrain.pt',
+# parser.add_argument('--finetune', default='',
 #                         help='finetune from checkpoint')
-# parser.add_argument('--finetune', default='/data2/zhanghao/CT_nodule/code/pretrained_model/out_vit_L_adni_mask80_no_pixelnorm/checkpoint-390.pth',
+# parser.add_argument('--finetune', default='',
 #                         help='finetune from checkpoint')
 parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
-parser.add_argument('--finetune_size',default=160)
+parser.add_argument('--finetune_size',default=160,help="input size")
 
 
 def main():
     torch.multiprocessing.set_sharing_strategy('file_system')
     args = parser.parse_args()
+    # Whether to use mixed precision
     args.amp = not args.noamp
+    # Set your own input size
     if args.model_name == 'swinunetr':
         args.finetune_size = 96
     else:
@@ -168,8 +176,9 @@ def main_worker(gpu, args):
         encoder = models_vit3d.__dict__[args.encoder_model](
             drop_path_rate = args.drop_path,
         )
+        # whether use pretrianing model
         if args.use_pretrain == True:
-            print("使用预训练encoder")
+            print("use encoder")
             checkpoiont = torch.load(args.finetune,map_location='cpu')
             print("Load pre-trained checkpoint from: %s" % args.finetune)
             checkpoint_model = checkpoiont['model']
@@ -179,7 +188,7 @@ def main_worker(gpu, args):
 
             total_parameters = count_parameters(encoder)
 
-            print("encoder的总参数数量：", total_parameters)
+            print("The total number of parameters of the encoder is：", total_parameters)
 
         encoder.cuda(args.gpu)
 
@@ -188,9 +197,9 @@ def main_worker(gpu, args):
             out_channels=args.out_channels,
             img_size=(160,160,160),
             feature_size=16,
-            hidden_size=768,
+            hidden_size=args.hidden_size,
             mlp_ratio=4.,
-            num_heads=12,
+            num_heads=args.num_heads,
             norm_name=args.norm_name,
             conv_block=True,
             res_block=True,
@@ -198,8 +207,9 @@ def main_worker(gpu, args):
             encoder=encoder)
         
         print('args.use_base',args.use_base)
-        if args.use_base == True:
-            print('使用base模型')
+        # whether use model which is pretiraned and public data finetuned. we call it is "base model".
+        if args.use_base == True: 
+            print('use base model')
             model_dict = torch.load(args.checkpoint,map_location='cpu')
             print("Load base model checkpoint from: %s" % args.checkpoint)
             model.load_state_dict(model_dict['state_dict'])
@@ -225,7 +235,7 @@ def main_worker(gpu, args):
        
 ####################################################################################################
     elif (args.model_name is None) or args.model_name == "swinunetr":
-        print("使用swinunetr训练")
+        print("use swin unetr")
         model = SwinUNETR(
             img_size=(args.roi_x, args.roi_y, args.roi_z),
             in_channels=args.in_channels,
@@ -238,13 +248,13 @@ def main_worker(gpu, args):
         )
 
 
-        # 检查参数是否已经设置为不需要梯度
+        # Check that the parameter has been set to require no gradient
         total_parameters = count_parameters(model)
-        print("模型的总参数数量：", total_parameters)
+        print("Total number of parameters of the model：", total_parameters)
 
-        # 将模型的所有参数设置为不需要梯度
-        for param in model.parameters():
-            param.requires_grad = False
+        # # All parameters of the model were set to require no gradient when 
+        # for param in model.parameters():
+        #     param.requires_grad = False
 
         if args.use_pretrain == True:
             print("Load pre-trained checkpoint from: %s" % args.finetune)
@@ -257,7 +267,6 @@ def main_worker(gpu, args):
             msg = model.load_state_dict(state_dict, strict=False)
             
             total_parameters = count_parameters(model)
-            print("模型的总参数数量：", total_parameters)
 
             print(msg)
 #####################################################################################################
@@ -296,20 +305,6 @@ def main_worker(gpu, args):
 
     best_acc = 0
     start_epoch = args.start_epoch
-
-    # if args.checkpoint is not None:
-    #     checkpoint = torch.load(args.checkpoint, map_location="cpu")
-    #     from collections import OrderedDict
-
-    #     new_state_dict = OrderedDict()
-    #     for k, v in checkpoint["state_dict"].items():
-    #         new_state_dict[k.replace("backbone.", "")] = v
-    #     model.load_state_dict(new_state_dict, strict=False)
-    #     if "epoch" in checkpoint:
-    #         start_epoch = checkpoint["epoch"]
-    #     if "best_acc" in checkpoint:
-    #         best_acc = checkpoint["best_acc"]
-    #     print("=> loaded checkpoint '{}' (epoch {}) (bestacc {})".format(args.checkpoint, start_epoch, best_acc))
 
     model.cuda(args.gpu)
 
@@ -364,5 +359,6 @@ def main_worker(gpu, args):
 if __name__ == "__main__":
     main()
 
+# for example
 # python /data2/zhanghao/BTCV/main.py --logdir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --log_dir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --output_dir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --add 5 --use_all_source True --source oasis 
 # python /data2/zhanghao/BTCV/main.py --logdir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --log_dir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --output_dir /data2/zhanghao/segment_run/oasis4_baseN_addadniN_onadni_w/5 --add 5 --use_all_source True --source oasis --num_source 0 --use_base True --checkpoint /data2/zhanghao/segment_run/oasis4_base_onadni_w/all/model.pt
