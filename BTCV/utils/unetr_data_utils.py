@@ -12,32 +12,17 @@ import random
 import pandas as pd
 import csv
 
-def random_sample_csv(csv_file, sample_size):
-    list10 = []
-    with open(csv_file, 'r') as file:
-        reader = csv.reader(file)
-        header = next(reader)  # 读取标题行
-        data = list(reader)    # 读取数据行
-
-    # 随机抽样指定数量的条目
-    sample = random.sample(data, sample_size)
-
-    # 将抽样结果打印出来
-    print(header)  # 打印标题行
-    for row in sample:
-        list10.append([row[2],row[3]])
-    return list10
 
 #random sample from dataset for distributed ->  then be a new dataset(with random smple)
 class Sampler(torch.utils.data.Sampler):
     def __init__(self, dataset, num_replicas=None, rank=None, shuffle=True, make_even=True):
-        #set  num_replicas  ==  进程数 
+        #set  num_replicas 
         if num_replicas is None:
             if not torch.distributed.is_available():
                 raise RuntimeError("Requires distributed package to be available")
             num_replicas = torch.distributed.get_world_size()
         
-        #set  rank == 当前进程序号
+        #set  rank == current rank
         if rank is None:
             if not torch.distributed.is_available():
                 raise RuntimeError("Requires distributed package to be available")
@@ -126,58 +111,6 @@ def get_loader(args):
         ]
     )
 
-    swin_transform = transforms.Compose(
-        [
-            transforms.LoadImaged(keys=["image", "label"],reader='ITKReader'),
-            transforms.AddChanneld(keys=["image", "label"]),
-            transforms.Orientationd(keys=["image", "label"], axcodes="RSP"),
-            transforms.Spacingd(
-                keys=["image", "label"], pixdim=(args.space_x, args.space_y, args.space_z), mode=("bilinear", "nearest")
-            ),
-            transforms.ScaleIntensityRangePercentilesd(keys="image",lower=5,upper=95,b_min=args.b_min,b_max=args.b_max,clip=True),
-            transforms.CropForegroundd(keys=["image", "label"], source_key="image"),
-            transforms.RandCropByPosNegLabeld(
-                keys=["image", "label"],
-                label_key="label",
-                spatial_size=(args.roi_x, args.roi_y, args.roi_z),
-                pos=1,
-                neg=1,
-                num_samples=2,
-                image_key="image",
-                image_threshold=0,
-            ),
-            transforms.RandFlipd(keys=["image", "label"], prob=args.RandFlipd_prob, spatial_axis=0),
-            transforms.RandFlipd(keys=["image", "label"], prob=args.RandFlipd_prob, spatial_axis=1),
-            transforms.RandFlipd(keys=["image", "label"], prob=args.RandFlipd_prob, spatial_axis=2),
-            transforms.RandRotate90d(keys=["image", "label"], prob=args.RandRotate90d_prob, max_k=3),
-            transforms.RandScaleIntensityd(keys="image", factors=0.1, prob=args.RandScaleIntensityd_prob),
-            transforms.RandShiftIntensityd(keys="image", offsets=0.1, prob=args.RandShiftIntensityd_prob),
-            transforms.Transposed(keys=["image","label"] , indices = (0,3,1,2)), # (channel,z,x,y)
-            transforms.ToTensord(keys=["image", "label"]),
-        ]
-    )
-
-    # 针对 adni 4 class 的 transform
-    test_transforms = transforms.Compose([
-        transforms.LoadImaged(keys=["image", "label"], reader='ITKReader'),
-        transforms.AddChanneld(keys=["image","label"]),
-        transforms.Orientationd(keys=["image", "label"], axcodes="RSP"),
-        transforms.Spacingd(
-                keys=["image", "label"], pixdim=(args.space_x, args.space_y, args.space_z), mode=["bilinear","nearest"]
-            ),
-        transforms.ScaleIntensityRangePercentilesd(keys="image",lower=5,upper=95,b_min=args.b_min,b_max=args.b_max,clip=True),
-        transforms.CropForegroundd(keys=["image", "label"], source_key="image"),
-        transforms.SpatialPadd(
-                keys =["image", "label"],
-                spatial_size = (args.roi_x, args.roi_y, args.roi_z), # 192,192,192
-            ),
-        transforms.CenterSpatialCropd(
-                keys=["image","label"],
-                roi_size = [args.roi_x, args.roi_y, args.roi_z],
-            ),
-        transforms.ToTensord(keys=["image", "label"]),
-    ]
-    )
 
     fintune_transforms = transforms.Compose(
         [
@@ -207,53 +140,31 @@ def get_loader(args):
         ]
     )
     
-    load_transform = transforms.Compose([
-            transforms.LoadImaged(keys=["image", "label"],reader='ITKReader'), 
-            transforms.AddChanneld(keys=["image", "label"]),
-            transforms.Orientationd(keys=["image", "label"], axcodes="RSP"),
-            transforms.Spacingd(
-                    keys=["image", "label"], pixdim=(args.space_x, args.space_y, args.space_z), mode=["bilinear","nearest"]
-                ),
-            transforms.ScaleIntensityRangePercentilesd(keys="image",lower=5,upper=95,b_min=args.b_min,b_max=args.b_max,clip=True),
-            transforms.CropForegroundd(keys=["image", "label"], source_key="image"),
-            transforms.SpatialPadd(
-                    keys =["image", "label"],
-                    spatial_size = (args.roi_x, args.roi_y, args.roi_z), # 160,160,192
-                ),
-            transforms.CenterSpatialCropd(keys=["image","label"],roi_size=(args.roi_x, args.roi_y, args.roi_z)),
-            transforms.Transposed(keys=["image","label"] , indices = (0,3,1,2)), # (channel,z,x,y)
-            transforms.ToTensord(keys=["image", "label"]),
-        ])
-
-
-
-
-
 
     if args.out_channels == 5:
 
         '''
-        脚本训练的数据集
+        dataset,the ".txt" need build by your self.
         '''
         train_list = []
         valid_list = []
         test_list = []
-        oasis_w_4_train = '/data2/zhanghao/Pretrain/utils/train/oasis_wtrain.txt'
-        adni_w_4_train = '/data2/zhanghao/Pretrain/utils/train/adni_w4train.txt'
-        oasis_w_4_val = '/data2/zhanghao/Pretrain/utils/val/oasis_wval.txt'
-        adni_w_4_val = '/data2/zhanghao/Pretrain/utils/val/adni_w4val.txt'
-        oasis_w_4_test = '/data2/zhanghao/Pretrain/utils/test/oasis_wtest.txt'
-        adni_w_4_test = '/data2/zhanghao/Pretrain/utils/test/adni_w4test_unseen.txt'
-        oasis_wo_4_train = '/data2/zhanghao/Pretrain/utils/train/oasis_wotrain.txt'
-        oasis_wo_4_val = '/data2/zhanghao/Pretrain/utils/val/oasis_woval.txt'
-        oasis_wo_4_test = '/data2/zhanghao/Pretrain/utils/test/oasis_wotest.txt'
-        adni_wo_4_train = '/data2/zhanghao/Pretrain/utils/train/adni_wotrain.txt'
-        adni_wo_4_val = '/data2/zhanghao/Pretrain/utils/val/adni_woval.txt'
-        adni_wo_4_test = '/data2/zhanghao/Pretrain/utils/test/adni_wo_test_xxxxxxxxxxx.txt'
+        oasis_w_4_train = '/Pretrain/utils/train/oasis_wtrain.txt'
+        adni_w_4_train = '/Pretrain/utils/train/adni_w4train.txt'
+        oasis_w_4_val = '/Pretrain/utils/val/oasis_wval.txt'
+        adni_w_4_val = '/Pretrain/utils/val/adni_w4val.txt'
+        oasis_w_4_test = '/Pretrain/utils/test/oasis_wtest.txt'
+        adni_w_4_test = '/Pretrain/utils/test/adni_w4test_unseen.txt'
+        oasis_wo_4_train = '/Pretrain/utils/train/oasis_wotrain.txt'
+        oasis_wo_4_val = '/Pretrain/utils/val/oasis_woval.txt'
+        oasis_wo_4_test = '/Pretrain/utils/test/oasis_wotest.txt'
+        adni_wo_4_train = '/Pretrain/utils/train/adni_wotrain.txt'
+        adni_wo_4_val = '/Pretrain/utils/val/adni_woval.txt'
+        adni_wo_4_test = '/Pretrain/utils/test/adni_wo_test.txt'
 
-        # 如果使用全部源域数据
+        # if use all source domain data
         if args.use_all_source:
-            # 如果源域是oasis
+            # if souce domain is oasis
             if args.source == 'oasis':
                 print('source = oasis')
                 with open(oasis_w_4_train) as f:
@@ -285,7 +196,7 @@ def get_loader(args):
                         test_list.append({'image':content[i].split('\n')[0].split(' ')[0],'label':content[i].split('\n')[0].split(' ')[2]})
                         
             elif args.source == 'adni_wo':
-                print('4类 wo adni')
+                print('4 class wo adni')
                 with open(adni_wo_4_test) as f:
                     content = f.readlines()
                     for i in range(len(content)):
@@ -309,7 +220,7 @@ def get_loader(args):
                         test_list.append({'image':content[i].split('\n')[0],'label':content[i].split('\n')[0]})
 
             elif args.source == 'oasis_wo':
-                print('4类 wo oasis')
+                print('4 class  wo oasis')
                 with open(oasis_wo_4_train) as f:
                     content = f.readlines()
                     for i in range(len(content)):
@@ -332,8 +243,8 @@ def get_loader(args):
                     for i in range(len(content)):
                         test_list.append({'image':content[i].split('\n')[0].split(' ')[0],'label':content[i].split('\n')[0].split(' ')[1]})
             elif args.source == None:
-                # 训练adni的基础模型
-                print('训练adni基础模型,4class')
+                # train adni base model
+                print('train adni base model,4class')
                 with open(adni_w_4_train) as f:
                     content = f.readlines()
                     for i in range(len(content)):
@@ -351,17 +262,17 @@ def get_loader(args):
         train_list = []
         valid_list = []
         test_list = []
-        oasis_w_35_train = '/data2/zhanghao/Pretrain/utils/train/oasis_wtrain.txt'
-        adni_w_35_train = '/data2/zhanghao/Pretrain/utils/train/adni_w35train.txt'
-        oasis_w_35_val = '/data2/zhanghao/Pretrain/utils/val/oasis_wval.txt'
-        adni_w_35_val = '/data2/zhanghao/Pretrain/utils/val/adni_w35val.txt'
-        oasis_w_35_test = '/data2/zhanghao/Pretrain/utils/test/oasis_wtest.txt'
-        adni_w_35_test = '/data2/zhanghao/Pretrain/utils/test/adni_w35test_unseen.txt'
-        oasis_wo_35_train = '/data2/zhanghao/Pretrain/utils/train/oasis_wotrain.txt'
-        oasis_wo_35_val = '/data2/zhanghao/Pretrain/utils/val/oasis_woval.txt'
-        oasis_wo_35_test = '/data2/zhanghao/Pretrain/utils/test/oasis_wotest.txt'
+        oasis_w_35_train = '/Pretrain/utils/train/oasis_wtrain.txt'
+        adni_w_35_train = '/Pretrain/utils/train/adni_w35train.txt'
+        oasis_w_35_val = '/Pretrain/utils/val/oasis_wval.txt'
+        adni_w_35_val = '/Pretrain/utils/val/adni_w35val.txt'
+        oasis_w_35_test = '/Pretrain/utils/test/oasis_wtest.txt'
+        adni_w_35_test = '/Pretrain/utils/test/adni_w35test_unseen.txt'
+        oasis_wo_35_train = '/Pretrain/utils/train/oasis_wotrain.txt'
+        oasis_wo_35_val = '/Pretrain/utils/val/oasis_woval.txt'
+        oasis_wo_35_test = '/Pretrain/utils/test/oasis_wotest.txt'
         if args.use_all_source:
-            # 如果源域是oasis
+            # if source domain is oasis
             if args.source == 'oasis':
                 print('source = oasis')
                 with open(oasis_w_35_train) as f:
@@ -448,8 +359,8 @@ def get_loader(args):
                 valid_list = train_list = test_list[:10]
 
             else:
-                # 训练adni的基础模型
-                print('训练adni基础模型')
+                # train adni base model
+                print('train adni base model')
                 with open(adni_w_35_train) as f:
                     content = f.readlines()
                     for i in range(len(content)):
@@ -475,9 +386,9 @@ def get_loader(args):
         cc359_skull_test='/data2/zhanghao/Pretrain/utils/test/cc359test.txt'
 
         if args.use_all_source:
-            # 如果源域是oasis
+            # if souce is oasis
             if args.source == 'oasis':
-                print('去颅骨分割 source = oasis')
+                print('skull stripping source = oasis')
                 with open(oasis_skull_train) as f:
                     content = f.readlines()
                     cnt = 0
@@ -507,7 +418,7 @@ def get_loader(args):
                         test_list.append({'image':content[i].split('\n')[0].split(' ')[0],'label':content[i].split('\n')[0].split(' ')[1]})
 
             elif args.source == 'cc359':
-                print('去颅骨分割 source = cc359')
+                print('skull stripping source = cc359')
                 with open(cc359_skull_train) as f:
                     content = f.readlines()
                     cnt = 0
@@ -535,8 +446,8 @@ def get_loader(args):
                     for i in range(len(content)):
                         test_list.append({'image':content[i].split('\n')[0].split(' ')[0],'label':content[i].split('\n')[0].split(' ')[1]})
             else:
-                # 训练adni的基础模型
-                print('训练oasis基础模型')
+                # train oasis base model
+                print('train oasis base model')
                 with open(oasis_skull_train) as f:
                     content = f.readlines()
                     for i in range(len(content)):
@@ -551,14 +462,8 @@ def get_loader(args):
                         test_list.append({'image':content[i].split('\n')[0].split(' ')[0],'label':content[i].split('\n')[0].split(' ')[1]})
 
 
-    # 打乱训练集
-    # random.shuffle(train_list)y
-    # 限制验证集个数
-    valid_list = valid_list[:250]
-    #visible_image = '/data2/FuQiang/adni_with_seg/data/4217/bl/ADNI_068_S_4217_MR_MT1__GradWarp__N3m_Br_20110910142439801_S121337_I255437.nii'
-    visible_image = '/data2/zhanghao/data/Reconstructed/Original/CC0091_philips_3_51_F.nii.gz'
-    test_list = []
-    test_list.append({'image':visible_image,'label':visible_image})
+    # shuffle train set
+    random.shuffle(train_list)
     print('len train',len(train_list),'len val',len(valid_list),'len test',len(test_list))
     if args.test_mode:
         if args.use_normal_dataset:
