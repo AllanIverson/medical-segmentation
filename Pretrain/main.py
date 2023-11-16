@@ -156,8 +156,8 @@ def main():
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     parser = argparse.ArgumentParser(description="PyTorch Training")
-    parser.add_argument("--logdir", default="pretrain8000p_goon", type=str, help="directory to save the tensorboard logs")
-    parser.add_argument("--epochs", default=95500, type=int, help="number of training epochs")
+    parser.add_argument("--logdir", default="", type=str, help="directory to save the tensorboard logs")
+    parser.add_argument("--epochs", default=0, type=int, help="number of training epochs")
     parser.add_argument("--num_steps", default=300000, type=int, help="number of training iterations")
     parser.add_argument("--eval_num", default=100, type=int, help="evaluation frequency")
     parser.add_argument("--warmup_steps", default=10000, type=int, help="warmup steps")
@@ -186,7 +186,7 @@ def main():
     parser.add_argument("--loss_type", default="SSL", type=str)
     parser.add_argument("--opt", default="adamw", type=str, help="optimization algorithm")
     parser.add_argument("--lr_schedule", default="warmup_cosine", type=str)
-    parser.add_argument("--resume", default='/data2/zhanghao/Pretrain/runs/pretrain8000p_goon/model_bestValRMSE.pt', type=str, help="resume training")
+    parser.add_argument("--resume", default='', type=str, help="resume training")
     parser.add_argument("--local_rank", type=int, default=0, help="local rank")
     parser.add_argument("--grad_clip", action="store_true", help="gradient clip")
     parser.add_argument("--noamp", action="store_true", help="do NOT use amp for training")
@@ -206,12 +206,12 @@ def main():
     args.amp = not args.noamp
     torch.backends.cudnn.benchmark = True
     torch.autograd.set_detect_anomaly(True)
-    ######################  修改了 并行 #########################
+
     args.distributed = False
     if "WORLD_SIZE" in os.environ:
         args.distributed = int(os.environ["WORLD_SIZE"]) > 1
-        print('并行')
-    print('单卡运行')
+        print('parallel')
+    print('single gpu')
     args.device = "cuda:2"
     args.world_size = 1
     args.rank = 0
@@ -241,7 +241,7 @@ def main():
     model = SSLHead(args)
     total_parameters = count_parameters(model)
 
-    print("模型的总参数数量：", total_parameters)
+    print("total parameters：", total_parameters)
     model.cuda()
 
     if args.opt == "adam":
@@ -253,7 +253,7 @@ def main():
     elif args.opt == "sgd":
         optimizer = optim.SGD(params=model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.decay)
     learning_rate = optimizer.param_groups[0]['lr']
-    print("初始学习率", learning_rate)
+    print("initial learning rate", learning_rate)
     input()
 
     if args.resume:
@@ -268,17 +268,18 @@ def main():
         model.load_state_dict(state_dict, strict=False)
 
         # model.epoch = model_dict["epoch"]
+        # In order to keep the learning rate of the checkpoints consistent
         model.epoch = 95500
         model.optimizer = model_dict["optimizer"]
 
-        # 获取当前学习率
+        # get current learning rate
         learning_rate = optimizer.param_groups[0]['lr']
-        print("当前学习率：", learning_rate)
+        print("current learning rate：", learning_rate)
         input()
         new_learning_rate = 0.0003201706579090092
         for param_group in optimizer.param_groups:
             param_group['lr'] = new_learning_rate
-        print('更改后的学习率',optimizer.param_groups[0]['lr'])
+        print('The learning rate after the change:',optimizer.param_groups[0]['lr'])
         input()
     if args.lrdecay:
         if args.lr_schedule == "warmup_cosine":
