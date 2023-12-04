@@ -1,8 +1,12 @@
 # medical-segmentation
 2022-BIBM
+
 **BTCV:Fine Tune**
+
 **CT_nodule\code:Pretrain 3D ViT**
+
 **Pretrain:Pretrain 3D Swin-T**
+
 ## method:Pretrain Once and Finetune Many times
 <img width="529" alt="image" src="https://github.com/AllanIverson/medical-segmentation/assets/51323949/4f99f647-3cac-40d7-b686-2c2bd595114e">
 
