@@ -11,7 +11,9 @@
 
 ## compare the SOTA segmentation model
 <img width="529" alt="image" src="https://github.com/AllanIverson/medical-segmentation/assets/51323949/787e117d-7a3a-4a43-b4c4-007b2a3654ba">
+
 ![image](https://github.com/AllanIverson/medical-segmentation/assets/51323949/2f7c9f9c-1ca7-4985-be8f-12f65d6f9a34)
+
 <img width="460" alt="image" src="https://github.com/AllanIverson/medical-segmentation/assets/51323949/535cb369-334c-4d3c-ba62-9994145a895b">
 
 
