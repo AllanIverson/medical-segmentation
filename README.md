@@ -1,7 +1,7 @@
 # medical-segmentation
 2022-BIBM
 
-**BTCV:Fine Tune**
+**BTCV:Finetune**
 
 **CT_nodule\code:Pretrain 3D ViT**
 
