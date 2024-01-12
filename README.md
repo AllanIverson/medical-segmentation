@@ -22,6 +22,7 @@
 
 <img width="460" alt="image" src="https://github.com/AllanIverson/medical-segmentation/assets/51323949/535cb369-334c-4d3c-ba62-9994145a895b">
 
-
-
-
+## Pretrained model (choose one link):
+https://pan.baidu.com/s/1GXb9rOdmvTphmGUY1a_Mmg?pwd=1447 
+Pwd：1447
+https://jbox.sjtu.edu.cn/l/D1WcWa
